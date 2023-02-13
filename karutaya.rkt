@@ -9,7 +9,7 @@
 (define card-width 406)
 (define card-height 584)
 
-(define card-color 'white)
+(define card-color (make-color 248 248 236))
 
 (define (blank-card)
   (rectangle card-width card-height 'solid card-color))
@@ -42,14 +42,22 @@
 
 ;; Text Formatting
 
-(define text-limit 24)
+(define text-limit 26)
 
 (define (format-texts texts)
   (map (lambda (text) (break-long-text text text-limit))
-       (pad-texts texts)))
+       (pad-texts texts 2)))
 
-(define (pad-texts texts)
-  (add-between texts "\n"))
+(define (pad-text text ct)
+  (if (<= ct 0)
+      text
+      (string-append text "\n")))
+
+(define (pad-texts texts ct)
+  (if (null? texts)
+      texts
+      (cons (pad-text (car texts) ct)
+            (pad-texts (cdr texts) (- ct 1)))))
 
 (define (break-long-text text limit)
   "Insert newline into text every limit characters"
@@ -105,8 +113,6 @@
 
 ;;; Input
 
-(define input-file "exinput0.cards")
-(define input (file->lines input-file))
 (define card-divider "--")
 
 (define (split-on-divider input acc)
