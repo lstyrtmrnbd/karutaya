@@ -2,7 +2,8 @@
 
 (require racket/file
          2htdp/image
-         racket/list)
+         racket/list
+         racket/string)
 
 ;;; Card Background
 
@@ -14,7 +15,7 @@
 (define (blank-card)
   (rectangle card-width card-height 'solid card-color))
 
-(define border-width 3)
+(define border-width 4)
 
 (define (card-border)
   (rectangle border-width card-height 'solid 'black))
@@ -26,19 +27,48 @@
 
 ;;; Text Rendering
 
-(define text-size 24)
+(define default-size 24)
 (define text-color (make-color 0 0 0))
 
-(define (write-text text)
-  (text/font text text-size text-color "Gills Sans" 'swiss 'normal 'bold #f))
+(define (write-text text text-size italics bold underline)
+  (text/font text text-size text-color "Roboto Slab" 'default italics bold underline))
+
+(define ctrl-char "$")
+
+(define (detect-ctrl text-list)
+  (let* ([text (car text-list)]
+         [ctrl (string=? ctrl-char (substring text 0 1))]
+         [italics (if (and ctrl (string-contains? text "i"))
+                      'italics
+                      'normal)]
+         [bold (if (and ctrl (string-contains? text "b"))
+                   'bold
+                   'normal)]
+         [underline (and ctrl (string-contains? text "u"))]
+         [size (if ctrl
+                   (string->number (substring text 1 3))
+                   default-size)]
+         [clean-list (if ctrl
+                         (cdr text-list)
+                         text-list)])
+    (values clean-list size italics bold underline)))
+
+(define (ct-down ct)
+  (lambda (option1 option2)
+    (set! ct (- ct 1))
+    (if (< 0 ct)
+        option1
+        option2)))
 
 (define (fill-text text-list)
-  (foldl (lambda (cur acc)
-           (above/align 'left
-                        acc
-                        (write-text cur)))
-         empty-image
-         text-list))
+  (let-values ([(clean-list size italics bold underline) (detect-ctrl text-list)])
+    (let ([ct-down-size (ct-down 4)])
+      (foldl (lambda (cur acc)             
+               (above/align 'left
+                            acc
+                            (write-text cur (ct-down-size 36 size) italics bold underline)))
+             empty-image
+             clean-list))))
 
 ;; Text Formatting
 
@@ -46,18 +76,7 @@
 
 (define (format-texts texts)
   (map (lambda (text) (break-long-text text text-limit))
-       (pad-texts texts 2)))
-
-(define (pad-text text ct)
-  (if (<= ct 0)
-      text
-      (string-append text "\n")))
-
-(define (pad-texts texts ct)
-  (if (null? texts)
-      texts
-      (cons (pad-text (car texts) ct)
-            (pad-texts (cdr texts) (- ct 1)))))
+       texts))
 
 (define (break-long-text text limit)
   "Insert newline into text every limit characters"
